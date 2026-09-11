@@ -1,19 +1,21 @@
 const $=id=>document.getElementById(id);
 const textExt=/\.(md|txt|json|csv|yaml|yml|js|mjs|cjs|ts|tsx|jsx|py|html|css|xml|toml|ini|env\.example)$/i;
 const MAX_FILE=50000,MAX_TOTAL=260000,MAX_FILES=120;
+const MAX_ZIP_BYTES=15*1024*1024,MAX_ZIP_ENTRIES=500,MAX_ZIP_TEXT_BYTES=150000;
 let current=null;
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
 function normalizePath(path){const p=String(path||'').replaceAll('\\','/').replace(/^\/+/, '');if(!p||p.split('/').some(x=>!x||x==='.'||x==='..'))return null;return p;}
-function shouldRead(path,size){return size<=150000&&(textExt.test(path)||/(readme|decisiones|prompt|requirements|dockerfile|makefile|package\.json)$/i.test(path));}
+function shouldRead(path,size){return size<=MAX_ZIP_TEXT_BYTES&&(textExt.test(path)||/(readme|decisiones|prompt|requirements|dockerfile|makefile|package\.json)$/i.test(path));}
 function relevance(path){const p=path.toLowerCase();let s=0;if(/readme/.test(p))s+=100;if(/prompt/.test(p))s+=95;if(/decision|iteracion|version|cambio/.test(p))s+=90;if(/corrida|run|salida|output|entrada|input/.test(p))s+=85;if(/econom|costo|cost|token|pricing/.test(p))s+=80;if(/gobierno|riesgo|risk|supervision|permiso|security/.test(p))s+=75;if(/tool|herramient|connector|integracion/.test(p))s+=70;if(textExt.test(p))s+=20;return s;}
 async function fingerprint(files){const payload=files.slice().sort((a,b)=>a.path.localeCompare(b.path)).map(f=>`${f.path}\u0000${f.content}`).join('\u0001');const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(payload));return [...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,'0')).join('');}
 
 function findEocd(view){const min=Math.max(0,view.byteLength-65557);for(let i=view.byteLength-22;i>=min;i--)if(view.getUint32(i,true)===0x06054b50)return i;return-1;}
 async function inflateRaw(bytes){if(typeof DecompressionStream==='undefined')throw Error('Tu navegador no soporta descompresión ZIP. Usá Chrome o Edge actualizado.');const ds=new DecompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer());}
 async function extractZip(file){
+  if(file.size>MAX_ZIP_BYTES)throw Error(`El ZIP supera el máximo de ${Math.round(MAX_ZIP_BYTES/1024/1024)} MB.`);
   const bytes=new Uint8Array(await file.arrayBuffer());const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);const eocd=findEocd(view);if(eocd<0)throw Error('ZIP inválido o no compatible.');
-  const total=view.getUint16(eocd+10,true),cdOffset=view.getUint32(eocd+16,true);if(total===0xffff||cdOffset===0xffffffff)throw Error('ZIP64 no soportado; usá carpeta local.');
+  const total=view.getUint16(eocd+10,true),cdOffset=view.getUint32(eocd+16,true);if(total===0xffff||cdOffset===0xffffffff)throw Error('ZIP64 no soportado; usá carpeta local.');if(total>MAX_ZIP_ENTRIES)throw Error(`El ZIP contiene demasiadas entradas (máximo ${MAX_ZIP_ENTRIES}).`);
   const decoder=new TextDecoder('utf-8');const out=[];let p=cdOffset;
   for(let i=0;i<total;i++){
     if(p+46>view.byteLength||view.getUint32(p,true)!==0x02014b50)throw Error('Directorio ZIP inválido.');
@@ -22,8 +24,8 @@ async function extractZip(file){
     if(!name||name.endsWith('/')||!shouldRead(name,uncompSize))continue;if(flags&1)throw Error('ZIP con contraseña no soportado.');
     if(localOffset+30>view.byteLength||view.getUint32(localOffset,true)!==0x04034b50)throw Error('Entrada ZIP inválida.');
     const nlen=view.getUint16(localOffset+26,true),elen=view.getUint16(localOffset+28,true),start=localOffset+30+nlen+elen,end=start+compSize;if(end>bytes.length)throw Error('ZIP incompleto.');
-    const compressed=bytes.slice(start,end);let plain;if(method===0)plain=compressed;else if(method===8)plain=await inflateRaw(compressed);else continue;
-    out.push({path:name,size:uncompSize,content:decoder.decode(plain)});
+    const compressed=bytes.slice(start,end);let plain;if(method===0)plain=compressed;else if(method===8)plain=await inflateRaw(compressed);else continue;if(plain.length>MAX_ZIP_TEXT_BYTES)continue;
+    out.push({path:name,size:plain.length,content:decoder.decode(plain)});
   }
   const roots=[...new Set(out.map(f=>f.path.split('/')[0]))];if(roots.length===1&&out.every(f=>f.path.includes('/'))){const r=roots[0]+'/';return out.map(f=>({...f,path:f.path.slice(r.length)})).filter(f=>f.path);}
   return out;
@@ -59,7 +61,8 @@ function renderResult(obj){
   const rows=keys.map(([k,label,max])=>{const d=dims[k]||{};return`<tr><td>${label}</td><td>${esc(d.puntaje??'—')}</td><td>${max}</td></tr>`}).join('');
   $('result-view').innerHTML=`<div class="score"><span>Total</span><strong>${esc(obj.puntaje_total??'—')}</strong><small>/100</small></div><table><thead><tr><th>Dimensión</th><th>Puntaje</th><th>Máx.</th></tr></thead><tbody>${rows}</tbody></table><h3>Resumen</h3><p>${esc(obj.resumen_final||'Sin resumen.')}</p><h3>Alertas de manipulación</h3><pre>${esc(JSON.stringify(obj.alertas_manipulacion||[],null,2))}</pre><h3>Inconsistencias</h3><pre>${esc(JSON.stringify(obj.inconsistencias||[],null,2))}</pre>`;$('result-card').hidden=false;
 }
-function importResult(){try{const obj=JSON.parse($('result-json').value);renderResult(obj);setStatus('Resultado V6 importado.');}catch(e){setStatus(`JSON inválido: ${e.message}`,true);}}
+function parseResultInput(raw){const text=String(raw||'').trim();if(!text)throw Error('Pegá el resultado de ChatGPT.');try{return JSON.parse(text);}catch{}const fenced=text.match(/```(?:json)?\s*([\s\S]*?)```/i);if(fenced){try{return JSON.parse(fenced[1].trim());}catch{}}const first=text.indexOf('{'),last=text.lastIndexOf('}');if(first>=0&&last>first)return JSON.parse(text.slice(first,last+1));throw Error('No encontré un objeto JSON válido en el texto pegado.');}
+function importResult(){try{const obj=parseResultInput($('result-json').value);renderResult(obj);setStatus('Resultado V6 importado.');}catch(e){setStatus(`No pude importar el resultado: ${e.message}`,true);}}
 
 $('zip-input').addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;try{setStatus('Leyendo ZIP…');await loadPackage(file.name.replace(/\.zip$/i,''),await extractZip(file),'zip');}catch(err){setStatus(err.message||String(err),true);}finally{e.target.value='';}});
 $('folder-input').addEventListener('change',async e=>{const list=e.target.files;if(!list?.length)return;try{setStatus('Leyendo carpeta…');const root=(list[0].webkitRelativePath||'Trabajo').split('/')[0];await loadPackage(root,await readFolder(list),'folder');}catch(err){setStatus(err.message||String(err),true);}finally{e.target.value='';}});
