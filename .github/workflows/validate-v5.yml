@@ -41,6 +41,7 @@ jobs:
         working-directory: evaluador-web
         run: |
           node --check public/app.js
+          node --check public/v6-assisted.js
           node --check public/official-ai-adapter.mjs
           node --check public/feedback.js
           node --check public/results-ui.js
@@ -103,6 +104,8 @@ jobs:
           npm run build
           test -f dist/index.html
           test -f dist/app.js
+          test -f dist/v6-assisted.html
+          test -f dist/v6-assisted.js
           test -f dist/official-ai-adapter.mjs
           test -f dist/engine_v4.mjs
           grep -q "from '/official-ai-adapter.mjs'" dist/app.js
@@ -111,6 +114,8 @@ jobs:
           grep -q "máximo de 15 MB" dist/app.js
           grep -q "Agente IA V5" dist/official-ai-adapter.mjs
           grep -q "ZIP y carpetas" dist/official-ai-adapter.mjs
+          grep -q "Evaluador V6" dist/v6-assisted.html
+          grep -q "buildPacket" dist/v6-assisted.js
       - name: Test executable runner against V5 fixtures
         working-directory: evaluador-web
         run: npm test
