@@ -5,6 +5,7 @@ on:
     branches:
       - work/final-hardening-v4
       - work/post-merge-hardening-v5
+      - v6/benchmark-hardening
       - main
     paths:
       - 'calibracion/resultados_v5/**'
@@ -50,6 +51,7 @@ jobs:
           node --check api/evaluate-one-shot-core.mjs
           node --check api/evaluate-local.mjs
           node --check api/evidence-gates.mjs
+          node --check test-v6-integrity.mjs
           node --check build-static.mjs
       - name: Validate one-shot official AI safeguards
         working-directory: evaluador-web
@@ -76,11 +78,16 @@ jobs:
           grep -q "evaluate-local" public/official-ai-adapter.mjs
           grep -q "createHash" api/evaluate-local.mjs
           grep -q "HUELLA DEL PAQUETE" api/evaluate-local.mjs
+          grep -q "V6_INTEGRITY_POLICY" api/evaluate-local.mjs
+          grep -q "motor_version: 'v6-integrity'" api/evaluate-local.mjs
           grep -q "changesScore:false" public/integrity.mjs
           grep -q "compareProfiles" test-integrity.mjs
       - name: Test deterministic evidence gates
         working-directory: evaluador-web
         run: node tests/evidence-gates.test.mjs
+      - name: Test V6 integrity regressions
+        working-directory: evaluador-web
+        run: node test-v6-integrity.mjs
       - name: Install local runner
         working-directory: evaluador-web
         run: npm install
