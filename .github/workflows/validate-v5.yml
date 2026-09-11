@@ -86,6 +86,13 @@ jobs:
           grep -q "motor_version: 'v6-integrity'" api/evaluate-local.mjs
           grep -q "changesScore:false" public/integrity.mjs
           grep -q "compareProfiles" test-integrity.mjs
+      - name: Validate assisted V6 safeguards
+        working-directory: evaluador-web
+        run: |
+          grep -q "MAX_ZIP_BYTES" public/v6-assisted.js
+          grep -q "MAX_ZIP_ENTRIES" public/v6-assisted.js
+          grep -q "MAX_ZIP_TEXT_BYTES" public/v6-assisted.js
+          grep -q "parseResultInput" public/v6-assisted.js
       - name: Test deterministic evidence gates
         working-directory: evaluador-web
         run: node tests/evidence-gates.test.mjs
