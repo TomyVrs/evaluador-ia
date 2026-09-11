@@ -43,7 +43,8 @@ function prepareEvidence(filesInput){
   const files=[];const limitations=[];let chars=0;if(normalized.length>MAX_FILES)limitations.push(`Se priorizaron ${MAX_FILES} archivos.`);
   for(const f of candidates){if(chars>=MAX_EVIDENCE_CHARS)break;let content=f.content;if(content.length>MAX_FILE_CHARS)content=content.slice(0,MAX_FILE_CHARS)+'\n[TRUNCADO]';if(chars+content.length>MAX_EVIDENCE_CHARS)content=content.slice(0,Math.max(0,MAX_EVIDENCE_CHARS-chars))+'\n[TRUNCADO TOTAL]';chars+=content.length;files.push({path:f.path,content});}
   if(chars>=MAX_EVIDENCE_CHARS)limitations.push(`Se alcanzó el límite de ${MAX_EVIDENCE_CHARS} caracteres.`);
-  const hash=createHash('sha256');for(const f of [...normalized].sort((a,b)=>a.path.localeCompare(b.path))){hash.update(f.path);hash.update('\0');hash.update(f.content);hash.update('\1');}
+  const hash=createHash('sha256');
+  for(const f of [...normalized].sort((a,b)=>a.path.localeCompare(b.path))){hash.update(f.path);hash.update('\u0000');hash.update(f.content);hash.update('\u0001');}
   return {inventory,files,limitations,inventoryComplete:normalized.length<=MAX_FILES&&chars<MAX_EVIDENCE_CHARS,fingerprint:`local-${hash.digest('hex')}`};
 }
 
