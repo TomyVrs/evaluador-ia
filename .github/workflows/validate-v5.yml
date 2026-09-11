@@ -5,6 +5,7 @@ on:
     branches:
       - work/final-hardening-v4
       - work/post-merge-hardening-v5
+      - v6/benchmark-hardening
       - main
     paths:
       - 'calibracion/resultados_v5/**'
@@ -40,6 +41,7 @@ jobs:
         working-directory: evaluador-web
         run: |
           node --check public/app.js
+          node --check public/v6-assisted.js
           node --check public/official-ai-adapter.mjs
           node --check public/feedback.js
           node --check public/results-ui.js
@@ -49,7 +51,11 @@ jobs:
           node --check api/evaluate-with-usage.mjs
           node --check api/evaluate-one-shot-core.mjs
           node --check api/evaluate-local.mjs
+          node --check api/evaluate-v6-local-core.mjs
           node --check api/evidence-gates.mjs
+          node --check api/v6-scoring.mjs
+          node --check test-v6-integrity.mjs
+          node --check test-v6-scoring.mjs
           node --check build-static.mjs
       - name: Validate one-shot official AI safeguards
         working-directory: evaluador-web
@@ -76,11 +82,26 @@ jobs:
           grep -q "evaluate-local" public/official-ai-adapter.mjs
           grep -q "createHash" api/evaluate-local.mjs
           grep -q "HUELLA DEL PAQUETE" api/evaluate-local.mjs
+          grep -q "V6_INTEGRITY_POLICY" api/evaluate-local.mjs
+          grep -q "motor_version: 'v6-integrity'" api/evaluate-local.mjs
           grep -q "changesScore:false" public/integrity.mjs
           grep -q "compareProfiles" test-integrity.mjs
+      - name: Validate assisted V6 safeguards
+        working-directory: evaluador-web
+        run: |
+          grep -q "MAX_ZIP_BYTES" public/v6-assisted.js
+          grep -q "MAX_ZIP_ENTRIES" public/v6-assisted.js
+          grep -q "MAX_ZIP_TEXT_BYTES" public/v6-assisted.js
+          grep -q "parseResultInput" public/v6-assisted.js
       - name: Test deterministic evidence gates
         working-directory: evaluador-web
         run: node tests/evidence-gates.test.mjs
+      - name: Test V6 integrity regressions
+        working-directory: evaluador-web
+        run: node test-v6-integrity.mjs
+      - name: Test V6 continuous scoring
+        working-directory: evaluador-web
+        run: node test-v6-scoring.mjs
       - name: Install local runner
         working-directory: evaluador-web
         run: npm install
@@ -90,6 +111,8 @@ jobs:
           npm run build
           test -f dist/index.html
           test -f dist/app.js
+          test -f dist/v6-assisted.html
+          test -f dist/v6-assisted.js
           test -f dist/official-ai-adapter.mjs
           test -f dist/engine_v4.mjs
           grep -q "from '/official-ai-adapter.mjs'" dist/app.js
@@ -98,6 +121,8 @@ jobs:
           grep -q "máximo de 15 MB" dist/app.js
           grep -q "Agente IA V5" dist/official-ai-adapter.mjs
           grep -q "ZIP y carpetas" dist/official-ai-adapter.mjs
+          grep -q "Evaluador V6" dist/v6-assisted.html
+          grep -q "buildPacket" dist/v6-assisted.js
       - name: Test executable runner against V5 fixtures
         working-directory: evaluador-web
         run: npm test

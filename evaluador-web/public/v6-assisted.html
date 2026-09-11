@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evaluador V6 · Modo asistido</title>
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18181b;background:#f4f4f5}*{box-sizing:border-box}body{margin:0}.shell{max-width:1100px;margin:auto;padding:32px 20px 60px}header{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;margin-bottom:24px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#71717a}h1{font-size:38px;line-height:1.05;margin:8px 0}h2{margin:0 0 8px;font-size:22px}h3{margin:20px 0 8px}p{color:#52525b;line-height:1.55}.pill{padding:8px 12px;border:1px solid #d4d4d8;border-radius:999px;background:white;font-size:13px;white-space:nowrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:#fff;border:1px solid #e4e4e7;border-radius:18px;padding:22px;box-shadow:0 1px 2px rgba(0,0,0,.03);margin-bottom:18px}.upload{border:1px dashed #a1a1aa;border-radius:14px;padding:18px;display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:14px}.button,button{border:0;border-radius:10px;padding:11px 15px;font-weight:700;cursor:pointer;background:#18181b;color:white}.secondary{background:#f4f4f5;color:#18181b;border:1px solid #d4d4d8}.actions{display:flex;gap:10px;flex-wrap:wrap}.status{padding:12px 14px;border-radius:10px;background:#f4f4f5;color:#3f3f46;margin:16px 0}.status.error{background:#fef2f2;color:#991b1b}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.metric{background:#fafafa;border:1px solid #e4e4e7;border-radius:12px;padding:12px}.metric small{display:block;color:#71717a}.metric strong{font-size:18px}.inventory{max-height:300px;overflow:auto;border-top:1px solid #e4e4e7;padding:8px 0 0;margin:12px 0 0;list-style:none}.inventory li{display:flex;justify-content:space-between;gap:16px;padding:8px 2px;border-bottom:1px solid #f4f4f5;font-size:13px}.inventory code{overflow-wrap:anywhere}.inventory span{color:#71717a;white-space:nowrap}textarea{width:100%;min-height:190px;border:1px solid #d4d4d8;border-radius:12px;padding:12px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}.note{background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:13px;color:#854d0e;font-size:14px}.score{display:flex;align-items:baseline;gap:7px;margin:12px 0}.score strong{font-size:44px}.score span,.score small{color:#71717a}table{width:100%;border-collapse:collapse;margin:10px 0}th,td{text-align:left;padding:9px;border-bottom:1px solid #e4e4e7}pre{background:#18181b;color:#fafafa;border-radius:12px;padding:14px;white-space:pre-wrap;overflow:auto}footer{color:#71717a;font-size:13px;margin-top:28px}@media(max-width:760px){.grid,.metrics{grid-template-columns:1fr}header{display:block}.pill{display:inline-block;margin-top:10px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+<div><div class="eyebrow">Creación de Agentes con IA · Personal</div><h1>Evaluador V6</h1><p>Modo asistido sin API. El navegador prepara la evidencia; GPT-5.6 Sol hace la evaluación semántica.</p></div>
+<span class="pill">Sin Vercel · sin API key</span>
+</header>
+
+<section class="card">
+<h2>1. Cargá el trabajo</h2>
+<p>Los archivos se leen localmente en tu navegador. Esta página no envía el trabajo a ningún servidor.</p>
+<div class="grid">
+<label class="upload"><span><b>ZIP</b><br><small>Un trabajo por archivo</small></span><span class="button">Elegir ZIP</span><input id="zip-input" type="file" accept=".zip,application/zip" hidden></label>
+<label class="upload"><span><b>Carpeta</b><br><small>Chrome / Edge</small></span><span class="button">Elegir carpeta</span><input id="folder-input" type="file" webkitdirectory directory multiple hidden></label>
+</div>
+<div id="status" class="status">Esperando un trabajo.</div>
+</section>
+
+<section id="loaded" class="card" hidden>
+<h2>2. Evidencia preparada</h2>
+<div class="metrics">
+<div class="metric"><small>Trabajo</small><strong id="package-name">—</strong></div>
+<div class="metric"><small>Archivos legibles</small><strong id="file-count">0</strong></div>
+<div class="metric"><small>Caracteres enviados a GPT</small><strong id="char-count">0</strong></div>
+<div class="metric"><small>Huella SHA-256</small><strong id="fingerprint">—</strong></div>
+</div>
+<p id="limitations"></p>
+<details><summary><b>Ver inventario priorizado</b></summary><ul id="inventory" class="inventory"></ul></details>
+</section>
+
+<section id="packet-actions" class="card" hidden>
+<h2>3. Evaluá con GPT</h2>
+<div class="note"><b>Flujo recomendado:</b> abrí ChatGPT con GPT-5.6 Sol, adjuntá <code>evaluador_v6_chatgpt.md</code> y este paquete de evidencia, y pedí: “Evaluá este trabajo con el contrato V6 adjunto”.</div>
+<p>Podés copiar el paquete o descargarlo como TXT. Si ChatGPT puede leer el ZIP directamente, también podés adjuntar el ZIP original y usar solamente el contrato V6.</p>
+<div class="actions"><button id="copy-packet">Copiar paquete</button><button id="download-packet" class="secondary">Descargar TXT</button></div>
+</section>
+
+<section class="card">
+<h2>4. Importá el resultado</h2>
+<p>Pegá el bloque JSON que devuelve GPT para visualizar el resumen en esta misma página.</p>
+<textarea id="result-json" placeholder='{"motor_version":"v6-gpt-semantic", "puntaje_total": ...}'></textarea>
+<div class="actions" style="margin-top:10px"><button id="import-result">Importar JSON</button></div>
+</section>
+
+<section id="result-card" class="card" hidden><h2>Resultado V6</h2><div id="result-view"></div></section>
+
+<footer>V6 personal · el HTML solo prepara evidencia y renderiza resultados · la evaluación semántica la realiza GPT.</footer>
+</div>
+<script src="./v6-assisted.js"></script>
+</body>
+</html>
