@@ -45,6 +45,15 @@ const inconsistent=[
 ];
 const broken=applyDeterministicEvidenceGates(output(),prompt(inconsistent));
 assert.ok(broken.inconsistencias.some(x=>/propias entradas|revisión humana/i.test(x.afirmacion)));
-for(const id of ['SC-03','PD-02','PD-03','FR-02','FR-03','GR-04'])assert.equal(broken.criterios[id].estado,'PARCIAL',id);
+for(const id of ['SC-03','PD-02','PD-03','GR-04'])assert.equal(broken.criterios[id].estado,'PARCIAL',id);
+assert.equal(broken.criterios['FR-02'].estado,'CUMPLE','una salida funcionalmente mala puede estar bien registrada');
+assert.equal(broken.criterios['FR-03'].estado,'CUMPLE','no degradar reproducibilidad por error funcional');
+
+const fabricated=[...strong,
+  ['DECISIONES.md','En la corrida 3 real se clasificó una nota de crédito como SIN_OC. No volví a correr la semana con v4.'],
+  ['corridas/corrida_03/revision_humana.md','La nota de crédito fue clasificada como AJUSTE. El video muestra cinco corridas y en ninguna hay errores de clasificación. Clasificaciones corregidas: 0 de 10.']
+];
+const altered=applyDeterministicEvidenceGates(output(),prompt(fabricated));
+for(const id of ['SC-03','PD-02','PD-03','FR-02','FR-03','GR-04'])assert.equal(altered.criterios[id].estado,'PARCIAL',`historial fabricado debe afectar ${id}`);
 
 console.log('evidence-gates V6: ok');
