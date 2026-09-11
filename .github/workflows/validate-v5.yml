@@ -51,7 +51,9 @@ jobs:
           node --check api/evaluate-one-shot-core.mjs
           node --check api/evaluate-local.mjs
           node --check api/evidence-gates.mjs
+          node --check api/v6-scoring.mjs
           node --check test-v6-integrity.mjs
+          node --check test-v6-scoring.mjs
           node --check build-static.mjs
       - name: Validate one-shot official AI safeguards
         working-directory: evaluador-web
@@ -88,6 +90,9 @@ jobs:
       - name: Test V6 integrity regressions
         working-directory: evaluador-web
         run: node test-v6-integrity.mjs
+      - name: Test V6 continuous scoring
+        working-directory: evaluador-web
+        run: node test-v6-scoring.mjs
       - name: Install local runner
         working-directory: evaluador-web
         run: npm install
